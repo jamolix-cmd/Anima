@@ -92,7 +92,7 @@ const PrinterSettings: React.FC = () => {
 
   // Cargar configuración de impresoras desde localStorage
   useEffect(() => {
-    const savedPrinters = localStorage.getItem('gameboxservice_printers')
+    const savedPrinters = localStorage.getItem('workshop_system_printers')
     if (savedPrinters) {
       const printersData = JSON.parse(savedPrinters)
       setPrinters(printersData)
@@ -106,7 +106,7 @@ const PrinterSettings: React.FC = () => {
   }, [])
 
   const savePrinters = (printersData: PrinterConfig[]) => {
-    localStorage.setItem('gameboxservice_printers', JSON.stringify(printersData))
+    localStorage.setItem('workshop_system_printers', JSON.stringify(printersData))
     setPrinters(printersData)
   }
 

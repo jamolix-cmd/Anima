@@ -19,7 +19,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
   
   // Usar SOLO logo de configuración de la BD (NO usar logo por defecto)
   const displayLogo = settings?.logo_url || null
-  const companyName = settings?.company_name || 'GameBox Service'
+  const companyName = settings?.company_name || 'Taller de Reparaciones'
   
   // Obtener sede y teléfono del usuario que recibió la orden o del usuario actual
   const receivedByUser = order.received_by || user
@@ -135,7 +135,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
             </head>
             <body>
               <div class="sticker-container">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="GameBox Logo" class="logo">` : ''}
+                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
                 <div class="info">
                   <div class="info-line"><strong>ORDEN:</strong> ${order.order_number}</div>
                   <div class="info-line"><strong>CLIENTE:</strong> ${customer.full_name.slice(0, 20)}</div>
@@ -231,7 +231,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
             </head>
             <body>
               <div class="header">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="GameBox Logo" class="logo">` : ''}
+                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
                 <div class="title">COMANDA DE SERVICIO</div>
               </div>
               
@@ -399,7 +399,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
                 <strong>📏 Tamaño de impresión:</strong> 7cm × 5cm
               </div>
               <div class="sticker-container">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="GameBox Logo" class="logo">` : ''}
+                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
                 <div class="info">
                   <div class="info-line"><strong>ORDEN:</strong> ${order.order_number}</div>
                   <div class="info-line"><strong>CLIENTE:</strong> ${customer.full_name.slice(0, 20)}</div>
@@ -516,7 +516,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
               </div>
               
               <div class="header">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="GameBox Logo" class="logo">` : ''}
+                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
                 <div class="title">COMANDA DE SERVICIO</div>
               </div>
               

@@ -59,10 +59,10 @@ export const REFRESH_INTERVALS = {
 
 // Local Storage Keys
 export const STORAGE_KEYS = {
-  PRINTERS: 'gameboxservice_printers',
-  AUTO_REFRESH: 'gameboxservice_auto_refresh',
-  THEME: 'gameboxservice_theme',
-  USER_PREFERENCES: 'gameboxservice_user_prefs'
+  PRINTERS: 'workshop_system_printers',
+  AUTO_REFRESH: 'workshop_system_auto_refresh',
+  THEME: 'workshop_system_theme',
+  USER_PREFERENCES: 'workshop_system_user_prefs'
 } as const
 
 // Validation Rules

@@ -77,7 +77,7 @@ const CommandaPrint: React.FC<CommandaPrintProps> = ({ order, customer, onPrint,
 
   // Cargar impresoras configuradas
   useEffect(() => {
-    const savedPrinters = localStorage.getItem('gameboxservice_printers')
+    const savedPrinters = localStorage.getItem('workshop_system_printers')
     if (savedPrinters) {
       const printersData = JSON.parse(savedPrinters)
       setPrinters(printersData)
@@ -124,7 +124,7 @@ const CommandaPrint: React.FC<CommandaPrintProps> = ({ order, customer, onPrint,
     
     const content = `
 ${separator}
-     🎮 GAMEBOXSERVICE 🎮
+     🔧 TALLER DE REPARACIONES
     COMANDA DE SERVICIO
 ${separator}
 
@@ -163,7 +163,7 @@ ${separator}
 ${separator}
 
 Generado: ${formatDate(new Date().toISOString())}
-Sistema: GameBoxService v1.0
+Sistema de Gestión v1.0
 `
 
     return content.trim()
@@ -174,7 +174,7 @@ Sistema: GameBoxService v1.0
     const zplContent = `
 ^XA
 ^LH0,0
-^FO50,50^A0N,30,30^FDGameBoxService^FS
+^FO50,50^A0N,30,30^FDSistema de Gestion^FS
 ^FO50,90^A0N,20,20^FDComanda de Servicio^FS
 ^FO50,120^GB400,2,2^FS
 

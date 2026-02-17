@@ -20,7 +20,7 @@ const Login: React.FC = () => {
     return settings?.logo_url || null
   }, [settings?.logo_url])
   
-  const companyName = settings?.company_name || 'GameBox Service'
+  const companyName = settings?.company_name || 'Sistema de Gestión'
   
   // Agregar timestamp dinámico para evitar cache del navegador
   const logoWithCacheBust = displayLogo && displayLogo.includes('supabase') 

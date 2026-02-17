@@ -14,7 +14,7 @@ export const useDynamicPageInfo = () => {
       document.title = `${settings.company_name} - Gestión de Reparaciones`
       console.log('📄 Título actualizado:', document.title)
     } else {
-      document.title = 'GameBox Service - Gestión de Reparaciones'
+      document.title = 'Sistema de Gestión - Reparaciones'
     }
 
     // Actualizar favicon si hay logo personalizado

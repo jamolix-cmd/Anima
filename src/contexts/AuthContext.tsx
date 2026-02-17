@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('❌ Error obteniendo perfil:', error)
         if (error.code === 'PGRST116') {
           let role = 'receptionist'
-          if (supabaseUser.email === 'admin@gameboxservice.com') {
+          if (supabaseUser.email === 'admin@tallerservice.com') {
             role = 'admin'
           } else if (supabaseUser.user_metadata?.role) {
             role = supabaseUser.user_metadata.role

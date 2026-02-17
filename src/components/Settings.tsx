@@ -328,7 +328,7 @@ const Settings: React.FC = () => {
                     className="form-control"
                     value={formData.company_name}
                     onChange={(e) => handleInputChange('company_name', e.target.value)}
-                    placeholder="GameBox Service"
+                    placeholder="Nombre de tu empresa"
                   />
                   <small className="text-muted d-block mt-1">
                     Este nombre aparecerá en las comandas y stickers de servicio
