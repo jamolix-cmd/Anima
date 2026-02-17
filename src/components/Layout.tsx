@@ -15,7 +15,6 @@ import {
   Package,
   Building
 } from 'lucide-react'
-import logoGamebox from '../assets/logo-gamebox.png'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -84,22 +83,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Estado para forzar actualización del logo
   const [logoKey, setLogoKey] = useState(Date.now())
 
-  // IMPORTANTE: Solo usar logo de BD cuando esté cargado (evita flash del logo hardcodeado)
-  // Si settings aún no cargó (loading=true), usar logo hardcodeado SOLO como último recurso
-  // Una vez cargado, priorizar siempre el logo de la BD
+  // IMPORTANTE: Solo usar logo de BD cuando esté cargado (NO mostrar logo por defecto)
   const displayLogo = useMemo(() => {
-    // Si está cargando Y no hay settings, mostrar logo temporal
-    if (loading && !settings) {
-      return logoGamebox
-    }
-    // Una vez cargado, usar SOLO el logo de la BD (o hardcodeado si BD no tiene)
-    return settings?.logo_url || logoGamebox
-  }, [settings?.logo_url, loading, settings])
+    // Solo mostrar el logo cuando settings esté cargado Y tenga logo_url
+    return settings?.logo_url || null
+  }, [settings?.logo_url])
   
   const companyName = settings?.company_name || 'GameBox Service'
   
   // Agregar timestamp dinámico para evitar cache del navegador
-  const logoWithCacheBust = displayLogo.includes('supabase') 
+  const logoWithCacheBust = displayLogo && displayLogo.includes('supabase') 
     ? `${displayLogo.split('?')[0]}?t=${logoKey}` 
     : displayLogo
 
@@ -121,19 +114,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button 
               onClick={() => navigate('dashboard')}
               className="navbar-brand d-flex align-items-center mb-0 me-auto btn border-0 p-0 bg-transparent"
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', minWidth: '140px', minHeight: '40px' }}
               aria-label="Ir al inicio"
             >
-              <img 
-                src={logoWithCacheBust} 
-                alt={companyName} 
-                className="img-fluid"
-                style={{ 
-                  width: '140px', 
-                  height: '40px', 
-                  objectFit: 'contain' 
-                }}
-              />
+              {logoWithCacheBust ? (
+                <img 
+                  src={logoWithCacheBust} 
+                  alt={companyName} 
+                  className="img-fluid"
+                  style={{ 
+                    width: '140px', 
+                    height: '40px', 
+                    objectFit: 'contain' 
+                  }}
+                />
+              ) : (
+                <div className="spinner-border spinner-border-sm text-primary" role="status">
+                  <span className="visually-hidden">Cargando logo...</span>
+                </div>
+              )}
             </button>
 
             {/* User Info Mobile - Between logo and toggle */}

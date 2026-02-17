@@ -3,15 +3,23 @@ import { convertImageToBase64 } from '../utils/imageConverter'
 
 /**
  * Custom hook for converting and caching image to base64
- * @param imageUrl - URL or path to the image
+ * @param imageUrl - URL or path to the image (can be null)
  * @returns Object containing base64 string, loading state, and error
  */
-export const useImageToBase64 = (imageUrl: string) => {
+export const useImageToBase64 = (imageUrl: string | null) => {
   const [base64, setBase64] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
+    // Si no hay imageUrl, no hacer nada
+    if (!imageUrl) {
+      setBase64('')
+      setLoading(false)
+      setError(null)
+      return
+    }
+
     let isMounted = true
 
     const loadImage = async () => {

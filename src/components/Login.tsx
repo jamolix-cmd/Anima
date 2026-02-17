@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCompanySettings } from '../hooks'
 import { LogIn, User, Lock } from 'lucide-react'
-import logoGamebox from '../assets/logo-gamebox.png'
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -15,20 +14,16 @@ const Login: React.FC = () => {
   // Estado para forzar actualización del logo
   const [logoKey, setLogoKey] = useState(Date.now())
 
-  // IMPORTANTE: Solo usar logo de BD cuando esté cargado (evita flash del logo hardcodeado)
+  // IMPORTANTE: Solo usar logo de BD cuando esté cargado (NO mostrar logo por defecto)
   const displayLogo = useMemo(() => {
-    // Si está cargando Y no hay settings, mostrar logo temporal
-    if (settingsLoading && !settings) {
-      return logoGamebox
-    }
-    // Una vez cargado, usar SOLO el logo de la BD (o hardcodeado si BD no tiene)
-    return settings?.logo_url || logoGamebox
-  }, [settings?.logo_url, settingsLoading, settings])
+    // Solo mostrar el logo cuando settings esté cargado Y tenga logo_url
+    return settings?.logo_url || null
+  }, [settings?.logo_url])
   
   const companyName = settings?.company_name || 'GameBox Service'
   
   // Agregar timestamp dinámico para evitar cache del navegador
-  const logoWithCacheBust = displayLogo.includes('supabase') 
+  const logoWithCacheBust = displayLogo && displayLogo.includes('supabase') 
     ? `${displayLogo.split('?')[0]}?t=${logoKey}` 
     : displayLogo
 
@@ -73,17 +68,23 @@ const Login: React.FC = () => {
             <div className="card shadow-lg border-0">
               <div className="card-body p-3 p-sm-4 p-md-5">
                 <div className="text-center mb-3 mb-md-4">
-                  <div className="d-flex justify-content-center align-items-center mb-3">
-                    <img 
-                      src={logoWithCacheBust} 
-                      alt={companyName} 
-                      className="img-fluid"
-                      style={{ 
-                        width: '200px', 
-                        height: '80px', 
-                        objectFit: 'contain' 
-                      }}
-                    />
+                  <div className="d-flex justify-content-center align-items-center mb-3" style={{ minHeight: '80px' }}>
+                    {logoWithCacheBust ? (
+                      <img 
+                        src={logoWithCacheBust} 
+                        alt={companyName} 
+                        className="img-fluid"
+                        style={{ 
+                          width: '200px', 
+                          height: '80px', 
+                          objectFit: 'contain' 
+                        }}
+                      />
+                    ) : (
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Cargando logo...</span>
+                      </div>
+                    )}
                   </div>
                   <p className="text-muted mb-0">Sistema de Gestión de Taller</p>
                 </div>
