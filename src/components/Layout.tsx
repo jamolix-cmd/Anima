@@ -23,7 +23,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, signOut } = useAuth()
   const { navigate, currentPage } = useRouter()
-  const { settings, loading } = useCompanySettings()
+  const { settings } = useCompanySettings()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navigationItems = [

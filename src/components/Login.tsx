@@ -9,7 +9,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { signIn } = useAuth()
-  const { settings, loading: settingsLoading } = useCompanySettings()
+  const { settings } = useCompanySettings()
 
   // Estado para forzar actualización del logo
   const [logoKey, setLogoKey] = useState(Date.now())
