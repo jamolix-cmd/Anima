@@ -117,13 +117,25 @@ DROP POLICY IF EXISTS "service_orders_update" ON service_orders;
 DROP POLICY IF EXISTS "service_orders_delete" ON service_orders;
 
 -- Políticas nuevas
--- Ver órdenes: Técnico asignado, quien recibió, admin, recepcionista
+-- Ver órdenes:
+-- - Admin y recepcionista: VEN TODAS (incluido outsourced para control)
+-- - Técnico: SOLO ve PENDIENTES y ASIGNADAS A ÉL (NO ve outsourced)
 CREATE POLICY "service_orders_select"
 ON service_orders FOR SELECT
 USING (
-  auth.uid() = assigned_technician_id OR
-  auth.uid() = received_by_id OR
+  -- Admin y recepcionista ven TODAS (incluido outsourced)
   public.current_user_role() IN ('admin', 'receptionist')
+  -- Técnico ve SOLO:
+  OR (
+    public.current_user_role() = 'technician' 
+    AND status != 'outsourced'  -- NO ve órdenes de taller externo
+    AND (
+      -- 1. Órdenes pendientes (para tomarlas)
+      status = 'pending'
+      -- 2. Órdenes asignadas a ÉL
+      OR assigned_technician_id = auth.uid()
+    )
+  )
 );
 
 -- Crear órdenes: Admin y Recepcionista
@@ -134,11 +146,39 @@ WITH CHECK (
 );
 
 -- Actualizar órdenes: Admin, Recepcionista, Técnico asignado, quien recibió
+-- CRÍTICO: Técnicos pueden TOMAR órdenes pendientes y COMPLETAR sus órdenes
 CREATE POLICY "service_orders_update"
 ON service_orders FOR UPDATE
 USING (
+  -- Admin y recepcionista pueden actualizar cualquier orden
   public.current_user_role() IN ('admin', 'receptionist')
+  -- Técnico asignado puede actualizar su orden
   OR auth.uid() = assigned_technician_id
+  -- Quien recibió puede actualizar
+  OR auth.uid() = received_by_id
+  -- Técnicos pueden TOMAR órdenes pendientes
+  OR (
+    public.current_user_role() = 'technician' 
+    AND status = 'pending'
+  )
+)
+WITH CHECK (
+  -- Validaciones al actualizar:
+  -- Admin y recepcionista pueden hacer cualquier cambio
+  public.current_user_role() IN ('admin', 'receptionist')
+  -- Técnico solo puede:
+  OR (
+    public.current_user_role() = 'technician' 
+    AND (
+      -- Tomar orden pendiente (asignarse a sí mismo)
+      (status = 'in_progress' AND assigned_technician_id = auth.uid())
+      -- Completar su orden asignada
+      OR (status = 'completed' AND assigned_technician_id = auth.uid())
+      -- Mantener su orden asignada en progreso
+      OR (status = 'in_progress' AND assigned_technician_id = auth.uid())
+    )
+  )
+  -- Quien recibió puede actualizar
   OR auth.uid() = received_by_id
 );
 
