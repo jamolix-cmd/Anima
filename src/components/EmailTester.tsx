@@ -81,13 +81,13 @@ const EmailTester: React.FC = () => {
         },
         body: JSON.stringify({
           to: testEmail,
-          subject: 'Prueba de Correo - Sistema de Gestión',
+          subject: 'Prueba de Correo - GameBox Service',
           html: `
-            <h2>📧 Prueba de Correo - Sistema de Gestión</h2>
+            <h2>🎮 Prueba de Correo - GameBox Service</h2>
             <p>Este es un correo de prueba para verificar que el sistema de invitaciones funciona correctamente.</p>
             <p>Si recibes este correo, la configuración SMTP está funcionando.</p>
             <hr>
-            <p><small>Este correo fue enviado como prueba desde el sistema de gestión de talleres.</small></p>
+            <p><small>Este correo fue enviado como prueba desde el sistema de gestión GameBox Service.</small></p>
           `
         })
       })

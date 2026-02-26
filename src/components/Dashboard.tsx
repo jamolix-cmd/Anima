@@ -31,15 +31,15 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Search
+  Search,
+  DollarSign
 } from 'lucide-react'
 import type { ServiceOrder } from '../types'
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth()
-  // Deshabilitar auto-refresh para administradores, habilitarlo para otros roles
-  const autoRefreshEnabled = user?.role !== 'admin'
-  const { serviceOrders, loading, updateServiceOrder, deleteServiceOrder } = useServiceOrders(autoRefreshEnabled)
+  // Auto-refresh habilitado para todos los roles (tiempo real via Supabase)
+  const { serviceOrders, loading, updateServiceOrder, deleteServiceOrder } = useServiceOrders(true)
   const { navigate } = useRouter()
   const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null)
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
@@ -55,6 +55,9 @@ const Dashboard: React.FC = () => {
   
   // Búsqueda de órdenes
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Filtro de Resumen de Caja
+  const [cajaFilter, setCajaFilter] = useState<'day' | 'week' | 'month'>('day')
 
   const getStats = () => {
     const pending = serviceOrders.filter(order => order.status === 'pending').length
@@ -212,16 +215,10 @@ const Dashboard: React.FC = () => {
                         <p className="mb-0 opacity-90">Panel de Administración</p>
                         <small className="opacity-75">Control total del sistema de reparaciones</small>
                         <div className="mt-2">
-                          {autoRefreshEnabled ? (
-                            <AutoRefreshIndicator 
+                          <AutoRefreshIndicator 
                               realtime={true}
                               className="opacity-75"
                             />
-                          ) : (
-                            <small className="opacity-75 text-white-50">
-                              📋 Actualización manual - Sin auto-refresh
-                            </small>
-                          )}
                         </div>
                       </div>
                       <div className="col-md-3 text-end d-none d-md-block">
@@ -360,6 +357,125 @@ const Dashboard: React.FC = () => {
 
             {/* Sección de entregas pendientes */}
             <DeliverySection />
+
+            {/* ===== RESUMEN DE CAJA ===== */}
+            {(() => {
+              const now = new Date()
+              const filterFn = (o: ServiceOrder) => {
+                const d = new Date(o.updated_at || o.created_at)
+                if (cajaFilter === 'day') return d.toDateString() === now.toDateString()
+                if (cajaFilter === 'week') {
+                  const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 6)
+                  return d >= weekAgo
+                }
+                // month
+                return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+              }
+              const filtered = serviceOrders.filter(o =>
+                o.status === 'delivered' && o.repair_cost != null && Number(o.repair_cost) > 0 && filterFn(o)
+              )
+              const methods = ['efectivo', 'transferencia', 'tarjeta', 'otro'] as const
+              const totals = methods.reduce((acc, m) => {
+                acc[m] = filtered.filter(o => o.payment_method === m).reduce((s, o) => s + Number(o.repair_cost), 0)
+                return acc
+              }, {} as Record<string, number>)
+              const grandTotal = filtered.reduce((s, o) => s + Number(o.repair_cost), 0)
+              const methodLabels: Record<string, string> = { efectivo: '💵 Efectivo', transferencia: '📱 Transferencia', tarjeta: '💳 Tarjeta', otro: '🔄 Otro' }
+              const filterLabels = { day: 'Hoy', week: 'Esta semana', month: 'Este mes' }
+              return (
+                <div className="row mb-3">
+                  <div className="col-12">
+                    <div className="card border-0 shadow-sm">
+                      <div className="card-header bg-transparent border-0 py-3">
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                          <div className="d-flex align-items-center">
+                            <div className="bg-success bg-opacity-10 rounded-circle p-2 me-2">
+                              <DollarSign size={18} className="text-success" />
+                            </div>
+                            <div>
+                              <h5 className="mb-0 fw-semibold">Resumen de Caja</h5>
+                              <small className="text-muted">{filtered.length} entrega{filtered.length !== 1 ? 's' : ''} cobrada{filtered.length !== 1 ? 's' : ''} — {filterLabels[cajaFilter]}</small>
+                            </div>
+                          </div>
+                          <div className="d-flex align-items-center gap-3">
+                            {/* Filtros */}
+                            <div className="btn-group btn-group-sm" role="group">
+                              {(['day', 'week', 'month'] as const).map(f => (
+                                <button
+                                  key={f}
+                                  type="button"
+                                  className={`btn ${cajaFilter === f ? 'btn-success' : 'btn-outline-success'}`}
+                                  onClick={() => setCajaFilter(f)}
+                                >
+                                  {filterLabels[f]}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="text-end">
+                              <div className="fw-bold fs-5 text-success">${grandTotal.toLocaleString('es-CL')}</div>
+                              <small className="text-muted">Total</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="card-body pt-0">
+                        {filtered.length === 0 ? (
+                          <div className="text-center py-3 text-muted">
+                            <DollarSign size={32} className="mb-2 opacity-25" />
+                            <div>No hay cobros registrados para {filterLabels[cajaFilter].toLowerCase()}</div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Totales por método */}
+                            <div className="d-flex flex-wrap gap-2 mb-3">
+                              {methods.filter(m => totals[m] > 0).map(m => (
+                                <div key={m} className="card border-success border-opacity-25 flex-fill" style={{ minWidth: '130px' }}>
+                                  <div className="card-body py-2 px-3">
+                                    <div className="small text-muted">{methodLabels[m]}</div>
+                                    <div className="fw-bold text-success">${totals[m].toLocaleString('es-CL')}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Detalle de órdenes */}
+                            <div className="table-responsive">
+                              <table className="table table-sm table-hover align-middle mb-0">
+                                <thead className="table-light">
+                                  <tr>
+                                    <th className="border-0 fw-semibold">Orden</th>
+                                    <th className="border-0 fw-semibold">Cliente</th>
+                                    <th className="border-0 fw-semibold">Dispositivo</th>
+                                    <th className="border-0 fw-semibold">Método</th>
+                                    <th className="border-0 fw-semibold text-end">Monto</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {filtered.map(o => (
+                                    <tr key={o.id}>
+                                      <td><small className="text-primary fw-semibold">#{o.order_number}</small></td>
+                                      <td><small>{o.customer?.full_name ?? '—'}</small></td>
+                                      <td><small className="text-muted">{o.device_brand} {o.device_model}</small></td>
+                                      <td><span className="badge bg-secondary bg-opacity-10 text-secondary text-capitalize">{o.payment_method ?? '—'}</span></td>
+                                      <td className="text-end"><span className="fw-semibold text-success">${Number(o.repair_cost).toLocaleString('es-CL')}</span></td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot className="table-light">
+                                  <tr>
+                                    <td colSpan={4} className="fw-bold text-end border-0">Total</td>
+                                    <td className="fw-bold text-success text-end border-0">${grandTotal.toLocaleString('es-CL')}</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Gestión de Usuarios - Solo para Administradores */}
             <div className="row mb-3">
@@ -717,6 +833,7 @@ const Dashboard: React.FC = () => {
                           <th scope="col" className="border-0 fw-semibold px-2 py-3">Estado</th>
                           <th scope="col" className="border-0 fw-semibold px-2 py-3">Técnico</th>
                           <th scope="col" className="border-0 fw-semibold px-2 py-3">Fecha</th>
+                          <th scope="col" className="border-0 fw-semibold px-2 py-3">Cobro</th>
                           {user?.role === 'admin' && (
                             <th scope="col" className="border-0 fw-semibold px-2 py-3 text-center" style={{ width: '17%' }}>Acciones</th>
                           )}
@@ -765,6 +882,22 @@ const Dashboard: React.FC = () => {
                               <small className="text-muted" style={{ fontSize: '0.85rem' }}>
                                 {formatDate.short(order.created_at)}
                               </small>
+                            </td>
+                            <td className="px-2 py-2 py-md-3" data-label="Cobro">
+                              {order.repair_result === 'not_repaired' ? (
+                                <span className="badge bg-danger bg-opacity-10 text-danger" style={{ fontSize: '0.75rem' }}>Sin cobro</span>
+                              ) : order.repair_cost != null && Number(order.repair_cost) > 0 ? (
+                                <div>
+                                  <div className="fw-semibold text-success" style={{ fontSize: '0.9rem' }}>
+                                    ${Number(order.repair_cost).toLocaleString('es-CL')}
+                                  </div>
+                                  {order.payment_method && (
+                                    <small className="text-muted text-capitalize">{order.payment_method}</small>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted small">—</span>
+                              )}
                             </td>
                             {user?.role === 'admin' && (
                               <td className="px-2 py-2 py-md-3 text-center" data-label="Acciones">

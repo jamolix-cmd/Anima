@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS external_repairs (
   sent_date TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   sent_by_id UUID REFERENCES profiles(id) NOT NULL,
   -- Información de seguimiento
-  external_status TEXT CHECK (external_status IN ('sent', 'in_process', 'ready', 'returned')) DEFAULT 'sent',
+  external_status TEXT CHECK (external_status IN ('sent', 'in_process', 'ready', 'returned', 'cancelled')) DEFAULT 'sent',
   estimated_return_date TIMESTAMP WITH TIME ZONE,
   actual_return_date TIMESTAMP WITH TIME ZONE,
   -- Costos

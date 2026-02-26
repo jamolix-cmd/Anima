@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { FileText, Printer, Download, X, Tag } from 'lucide-react'
 import type { ServiceOrder, Customer } from '../types'
+import logoGamebox from '../assets/logo-gamebox.png'
 import { useImageToBase64 } from '../hooks'
 import { useCompanySettings } from '../hooks'
 import { formatDateForPrint, getStatusDisplayName } from '../utils'
@@ -17,9 +18,9 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
   const { user } = useAuth()
   const { settings } = useCompanySettings()
   
-  // Usar SOLO logo de configuración de la BD (NO usar logo por defecto)
-  const displayLogo = settings?.logo_url || null
-  const companyName = settings?.company_name || 'Taller de Reparaciones'
+  // Usar logo de configuración si está disponible, sino usar logo por defecto
+  const displayLogo = settings?.logo_url || logoGamebox
+  const companyName = settings?.company_name || 'GameBox Service'
   
   // Obtener sede y teléfono del usuario que recibió la orden o del usuario actual
   const receivedByUser = order.received_by || user
@@ -29,7 +30,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
   const { base64: logoBase64 } = useImageToBase64(displayLogo)
   
   // Para las vistas previas, agregar timestamp para evitar cache
-  const logoForPreview = displayLogo && displayLogo.includes('supabase') 
+  const logoForPreview = displayLogo.includes('supabase') 
     ? `${displayLogo.split('?')[0]}?t=${Date.now()}` 
     : displayLogo
 
@@ -135,7 +136,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
             </head>
             <body>
               <div class="sticker-container">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
+                <img src="${logoBase64}" alt="GameBox Logo" class="logo">
                 <div class="info">
                   <div class="info-line"><strong>ORDEN:</strong> ${order.order_number}</div>
                   <div class="info-line"><strong>CLIENTE:</strong> ${customer.full_name.slice(0, 20)}</div>
@@ -231,7 +232,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
             </head>
             <body>
               <div class="header">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
+                <img src="${logoBase64}" alt="GameBox Logo" class="logo">
                 <div class="title">COMANDA DE SERVICIO</div>
               </div>
               
@@ -399,7 +400,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
                 <strong>📏 Tamaño de impresión:</strong> 7cm × 5cm
               </div>
               <div class="sticker-container">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
+                <img src="${logoBase64}" alt="GameBox Logo" class="logo">
                 <div class="info">
                   <div class="info-line"><strong>ORDEN:</strong> ${order.order_number}</div>
                   <div class="info-line"><strong>CLIENTE:</strong> ${customer.full_name.slice(0, 20)}</div>
@@ -516,7 +517,7 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
               </div>
               
               <div class="header">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
+                <img src="${logoBase64}" alt="GameBox Logo" class="logo">
                 <div class="title">COMANDA DE SERVICIO</div>
               </div>
               
@@ -626,15 +627,13 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
                     fontWeight: 900
                   }}>
                     {/* Logo optimizado */}
-                    {logoForPreview && (
-                      <img src={logoForPreview} alt={companyName} style={{ 
-                        width: '100px', 
-                        height: '48px', 
-                        margin: '0 auto 5px auto',
-                        display: 'block',
-                        objectFit: 'contain'
-                      }} />
-                    )}
+                    <img src={logoForPreview} alt={companyName} style={{ 
+                      width: '100px', 
+                      height: '48px', 
+                      margin: '0 auto 5px auto',
+                      display: 'block',
+                      objectFit: 'contain'
+                    }} />
                     
                     <div style={{ 
                       fontSize: '13px', 
@@ -673,14 +672,12 @@ const ComandaPreview: React.FC<ComandaPreviewProps> = ({ order, customer, onClos
                   }}>
                     {/* Header con logo */}
                     <div className="text-center mb-3 pb-2" style={{ borderBottom: '1px dashed #000' }}>
-                      {logoForPreview && (
-                        <img src={logoForPreview} alt={companyName} style={{ 
-                          width: '180px', 
-                          height: '72px',
-                          marginBottom: '8px',
-                          objectFit: 'contain'
-                        }} />
-                      )}
+                      <img src={logoForPreview} alt={companyName} style={{ 
+                        width: '180px', 
+                        height: '72px',
+                        marginBottom: '8px',
+                        objectFit: 'contain'
+                      }} />
                       <div style={{ fontWeight: 'bold', fontSize: '13px' }}>COMANDA DE SERVICIO</div>
                     </div>
                     

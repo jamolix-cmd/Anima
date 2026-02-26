@@ -50,9 +50,9 @@ Ve al **SQL Editor** de Supabase (`https://supabase.com/dashboard/project/[PROJE
 ```
 
 **Este script crea:**
-- ✅ Políticas RLS (Row Level Security) completas
+- ✅ 25 Políticas RLS (Row Level Security)
 - ✅ Permisos diferenciados por rol (admin, receptionist, technician)
-- ✅ Técnicos pueden VER, TOMAR y COMPLETAR órdenes
+- ✅ Protección contra recursión infinita
 
 **Tiempo estimado:** 5-10 segundos
 
@@ -71,30 +71,6 @@ Ve al **SQL Editor** de Supabase (`https://supabase.com/dashboard/project/[PROJE
 - ✅ 4 Políticas de Storage
 
 **Tiempo estimado:** 5 segundos
-
----
-
-## 🔧 Script de Corrección
-
-### Fix: Técnicos - Políticas Completas
-
-**Archivo:** `database/fix_technician_view_orders.sql`
-
-**Problemas que resuelve:**
-- ❌ Técnicos no ven órdenes pendientes
-- ❌ Técnicos no pueden TOMAR órdenes pendientes
-- ❌ Técnicos no pueden COMPLETAR sus órdenes
-
-**Solución:** Actualiza políticas SELECT y UPDATE para flujo completo
-
-```sql
--- Ejecutar: database/fix_technician_view_orders.sql
-```
-
-**Cuándo ejecutar:**
-- ⚠️ Si los técnicos no pueden tomar órdenes
-- ⚠️ Si los técnicos no pueden completar reparaciones
-- ✅ Ya incluido en 02_init_policies.sql actualizado (instalaciones nuevas)
 
 ---
 

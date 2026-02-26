@@ -1,4 +1,4 @@
-# 🔧 Sistema de Gestión para Talleres de Reparación
+# 🎮 GameBox Service - Sistema de Gestión para Taller de Reparación
 
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript)](https://www.typescriptlang.org/)
@@ -6,7 +6,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Ready-3ECF8E?logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38BDF8?logo=tailwindcss)](https://tailwindcss.com/)
 
-> Sistema completo de gestión para talleres de servicio técnico. Desarrollado con React, TypeScript, Vite y Supabase (PostgreSQL + Auth). Personalizable y diseñado para cualquier tipo de taller de reparaciones.
+> Sistema completo de gestión para talleres de servicio técnico de videojuegos, consolas y accesorios. Desarrollado con React, TypeScript, Vite y Supabase (PostgreSQL + Auth).
 
 ---
 
@@ -79,22 +79,22 @@ La aplicación incluye modo demostración con datos de prueba.
 
 ### 👑 Administrador
 ```
-Email: admin@tallerservice.com
-Contraseña: tallerservice123
+Email: admin@gameboxservice.com
+Contraseña: gameboxservice123
 ```
 **Permisos**: Acceso completo, configuración, reportes, gestión de usuarios
 
 ### 📋 Recepcionista  
 ```
-Email: recepcion@tallerservice.com
-Contraseña: tallerservice123
+Email: recepcion@gameboxservice.com
+Contraseña: gameboxservice123
 ```
 **Permisos**: Crear órdenes, buscar clientes, marcar entregas
 
 ### 🔧 Técnico
 ```
-Email: tecnico@tallerservice.com
-Contraseña: tallerservice123
+Email: tecnico@gameboxservice.com
+Contraseña: gameboxservice123
 ```
 **Permisos**: Ver y gestionar reparaciones asignadas, completar trabajos
 
@@ -614,5 +614,11 @@ La aplicación ya maneja todos los casos de uso de un taller de reparación de v
 ])
 ```
 # AnimatecService
-# Animatec
-"# Service" 
+"# AnimatecService" 
+# AnimatecService
+"# AnimatecService" 
+"# AnimatecServ" 
+"# AnimatecServ" 
+# AnimatecService
+# AnimatecS
+# AnimatecS

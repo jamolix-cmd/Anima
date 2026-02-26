@@ -5,7 +5,7 @@ import { useRouter } from '../contexts/RouterContext'
 import { useExternalWorkshops } from '../hooks/useExternalWorkshops'
 import { useExternalRepairs } from '../hooks/useExternalRepairs'
 import { useCompanySettings } from '../hooks/useCompanySettings'
-import { Clock, User, CheckCircle, Package, Plus, Wrench, Calendar, Printer, Gamepad2, Gamepad, Search, Send } from 'lucide-react'
+import { Clock, User, CheckCircle, Package, Plus, Wrench, Calendar, Printer, Gamepad2, Gamepad, Search, Send, DollarSign, XCircle } from 'lucide-react'
 import AutoRefreshIndicator from './AutoRefreshIndicator'
 import ComandaPreview from './ComandaPreview'
 import { CustomModal } from './ui/CustomModal'
@@ -31,9 +31,9 @@ interface OutsourceModalData {
 }
 
 const ServiceQueue: React.FC = () => {
-  const { serviceOrders, loading, updateServiceOrder, completeServiceOrder, deliverServiceOrder } = useServiceOrders(true) // Enable auto-refresh
+  const { serviceOrders, loading, updateServiceOrder, completeServiceOrder, deliverServiceOrder, fetchServiceOrders } = useServiceOrders(true) // Enable auto-refresh
   const { workshops } = useExternalWorkshops()
-  const { createRepair } = useExternalRepairs()
+  const { createRepair, markAsReturned } = useExternalRepairs()
   const { settings } = useCompanySettings()
   const { user } = useAuth()
   const { navigate } = useRouter()
@@ -48,6 +48,18 @@ const ServiceQueue: React.FC = () => {
   const [completionNotes, setCompletionNotes] = useState('')
   const [deliveryNotes, setDeliveryNotes] = useState('')
   const [currentAction, setCurrentAction] = useState<'complete' | 'deliver' | 'outsource' | null>(null)
+
+  // Estados para modal de completar
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [completeOrderId, setCompleteOrderId] = useState('')
+  const [repairResult, setRepairResult] = useState<'repaired' | 'not_repaired'>('repaired')
+
+  // Estados para modal de entrega/cobro
+  const [showDeliverModal, setShowDeliverModal] = useState(false)
+  const [deliverOrderId, setDeliverOrderId] = useState('')
+  const [deliverOrderData, setDeliverOrderData] = useState<any>(null)
+  const [repairCost, setRepairCost] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta' | 'otro'>('efectivo')
   
   // Estados para tercerización
   const [showOutsourceModal, setShowOutsourceModal] = useState(false)
@@ -57,6 +69,14 @@ const ServiceQueue: React.FC = () => {
     problemSent: '',
     notes: ''
   })
+
+  // Estados para el modal de retorno de taller externo
+  const [showReturnModal, setShowReturnModal] = useState(false)
+  const [returnRepairId, setReturnRepairId] = useState('')
+  const [returnOrderId, setReturnOrderId] = useState('')
+  const [returnOrderNumber, setReturnOrderNumber] = useState('')
+  const [returnRepairResult, setReturnRepairResult] = useState<'repaired' | 'not_repaired'>('repaired')
+  const [returnNotes, setReturnNotes] = useState('')
   
   // Estados para la comanda de impresión
   const [showComandaFor, setShowComandaFor] = useState<{order: any, customer: any} | null>(null)
@@ -73,6 +93,9 @@ const ServiceQueue: React.FC = () => {
     setCompletionNotes('')
     setDeliveryNotes('')
     setShowOutsourceModal(false)
+    setShowCompleteModal(false)
+    setShowDeliverModal(false)
+    setShowReturnModal(false)
     setOutsourceData({
       orderId: '',
       workshopId: '',
@@ -183,50 +206,59 @@ const ServiceQueue: React.FC = () => {
   }
 
   const handleCompleteOrder = (orderId: string) => {
-    setCurrentAction('complete')
+    setCompleteOrderId(orderId)
+    setRepairResult('repaired')
     setCompletionNotes('')
-    
-    setModal({
-      isOpen: true,
-      type: 'info',
-      title: 'Completar Reparación',
-      message: 'Describe el trabajo realizado en la reparación:',
-      showCancel: true,
-      confirmText: 'Completar Reparación',
-      onConfirm: async () => {
-        try {
-          await completeServiceOrder(orderId, completionNotes.trim())
-          showSuccessModal('Reparación completada exitosamente')
-        } catch (error) {
-          console.error('❌ Error al completar:', error)
-          showErrorModal('Error al completar la reparación')
-        }
-        closeModal()
-      }
-    })
+    setShowCompleteModal(true)
   }
 
-  const handleDeliverOrder = (orderId: string) => {
-    setCurrentAction('deliver')
+  const handleConfirmComplete = async () => {
+    try {
+      await completeServiceOrder(completeOrderId, completionNotes.trim(), repairResult)
+      setShowCompleteModal(false)
+      showSuccessModal(
+        repairResult === 'repaired'
+          ? '✅ Reparación completada exitosamente'
+          : '❌ Orden registrada como no reparada'
+      )
+    } catch (error) {
+      console.error('❌ Error al completar:', error)
+      showErrorModal('Error al completar la reparación')
+    }
+  }
+
+  const handleDeliverOrder = (orderId: string, order?: any) => {
+    setDeliverOrderId(orderId)
+    setDeliverOrderData(order || null)
+    setRepairCost('')
+    setPaymentMethod('efectivo')
     setDeliveryNotes('')
-    
-    setModal({
-      isOpen: true,
-      type: 'confirm',
-      title: 'Confirmar Entrega',
-      message: '¿Confirmas que el cliente ha recogido su artículo? Puedes agregar notas opcionales:',
-      showCancel: true,
-      confirmText: 'Confirmar Entrega',
-      onConfirm: async () => {
-        try {
-          await deliverServiceOrder(orderId, deliveryNotes.trim())
-          showSuccessModal('Artículo entregado exitosamente al cliente')
-        } catch (error) {
-          showErrorModal('Error al registrar la entrega')
-        }
-        closeModal()
-      }
-    })
+    setShowDeliverModal(true)
+  }
+
+  const handleConfirmDeliver = async () => {
+    const cost = repairCost ? parseFloat(repairCost) : null
+    const method = cost ? paymentMethod : null
+    try {
+      await deliverServiceOrder(deliverOrderId, deliveryNotes.trim(), cost, method)
+      setShowDeliverModal(false)
+      showSuccessModal('Artículo entregado exitosamente al cliente')
+    } catch (error) {
+      showErrorModal('Error al registrar la entrega')
+    }
+  }
+
+  const handleConfirmReturn = async () => {
+    try {
+      const { error } = await markAsReturned(returnRepairId, new Date().toISOString(), returnNotes.trim() || undefined)
+      if (error) { showErrorModal(error); setShowReturnModal(false); return }
+      await completeServiceOrder(returnOrderId, returnNotes.trim() || '', returnRepairResult)
+      setShowReturnModal(false)
+      showSuccessModal(`Orden #${returnOrderNumber} retornada y marcada como ${returnRepairResult === 'repaired' ? 'Reparada' : 'No Reparada'}. Lista para entregar al cliente.`)
+    } catch {
+      setShowReturnModal(false)
+      showErrorModal('Error al registrar el retorno. Intenta de nuevo.')
+    }
   }
 
   const handleOutsourceOrder = (orderId: string, order: any) => {
@@ -277,6 +309,8 @@ const ServiceQueue: React.FC = () => {
       if (error) {
         showErrorModal(error)
       } else {
+        // Forzar actualización inmediata en todos los roles
+        await fetchServiceOrders()
         showSuccessModal('Orden enviada al taller externo exitosamente')
         closeModal()
       }
@@ -305,7 +339,12 @@ const ServiceQueue: React.FC = () => {
   }
 
   const getOrdersByStatus = (status: string) => {
-    return serviceOrders.filter(order => {
+    // Para pendientes: ordenar de más antigua a más reciente (FIFO - prioridad al más antiguo)
+    const sorted = status === 'pending'
+      ? [...serviceOrders].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      : serviceOrders
+
+    return sorted.filter(order => {
       // Filtrar por rol de usuario
       let roleFilter = true
       if (user?.role === 'technician') {
@@ -504,7 +543,7 @@ const ServiceQueue: React.FC = () => {
                         <div className="d-grid gap-1 mt-2">
                           <button 
                             className="btn btn-outline-success btn-sm border-2"
-                            onClick={() => handleDeliverOrder(order.id)}
+                            onClick={() => handleDeliverOrder(order.id, order)}
                             style={{minHeight: '44px'}}
                           >
                             <Package size={16} className="me-1" />
@@ -571,16 +610,38 @@ const ServiceQueue: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Mostrar taller externo si está tercerizada */}
-                      {order.external_repair && Array.isArray(order.external_repair) && order.external_repair.length > 0 && order.external_repair[0]?.workshop && (
-                        <div className="mt-2 pt-2 border-top">
-                          <small className="text-warning">
-                            <Send size={12} className="me-1" />
-                            <span className="fw-semibold">Taller Externo:</span>{' '}
-                            {order.external_repair[0].workshop.name}
-                          </small>
-                        </div>
-                      )}
+                      {/* Mostrar taller externo si está tercerizada (y no cancelada) */}
+                      {order.external_repair && Array.isArray(order.external_repair) && (() => {
+                        const activeRepair = order.external_repair.find((r: any) => r.external_status !== 'cancelled')
+                        return activeRepair?.workshop ? (
+                          <div className="mt-2 pt-2 border-top">
+                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                              <small className="text-warning">
+                                <Send size={12} className="me-1" />
+                                <span className="fw-semibold">Taller Externo:</span>{' '}
+                                {activeRepair.workshop.name}
+                              </small>
+                              {(user?.role === 'admin' || user?.role === 'receptionist') && activeRepair.external_status !== 'returned' && (
+                                <button
+                                  className="btn btn-success btn-sm py-0 px-2"
+                                  style={{ fontSize: '0.7rem' }}
+                                  onClick={() => {
+                                    setReturnRepairId(activeRepair.id)
+                                    setReturnOrderId(order.id)
+                                    setReturnOrderNumber(order.order_number)
+                                    setReturnRepairResult('repaired')
+                                    setReturnNotes('')
+                                    setShowReturnModal(true)
+                                  }}
+                                >
+                                  <CheckCircle size={11} className="me-1" />
+                                  Retornado
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : null
+                      })()}
                       
                       {order.completion_notes && (
                         <div className="mt-2 pt-2 border-top">
@@ -957,6 +1018,83 @@ const ServiceQueue: React.FC = () => {
         />
       )}
 
+      {/* ===== MODAL: RETORNO DE TALLER EXTERNO ===== */}
+      {showReturnModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-primary text-white border-0">
+                <h5 className="modal-title">
+                  <Package size={18} className="me-2" />
+                  Retorno del Taller Externo — #{returnOrderNumber}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowReturnModal(false)} />
+              </div>
+              <div className="modal-body p-4">
+                <div className="mb-4">
+                  <label className="form-label fw-semibold mb-3">
+                    ¿El taller logró reparar el dispositivo? <span className="text-danger">*</span>
+                  </label>
+                  <div className="d-flex gap-3">
+                    <div
+                      className={`card flex-fill border-2 ${returnRepairResult === 'repaired' ? 'border-success bg-success bg-opacity-10' : 'border-light'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setReturnRepairResult('repaired')}
+                    >
+                      <div className="card-body text-center py-3">
+                        <div className="fs-2 mb-1">✅</div>
+                        <div className={`fw-semibold small ${returnRepairResult === 'repaired' ? 'text-success' : 'text-muted'}`}>Reparada</div>
+                        <small className="text-muted">Lista para cobrar</small>
+                      </div>
+                    </div>
+                    <div
+                      className={`card flex-fill border-2 ${returnRepairResult === 'not_repaired' ? 'border-danger bg-danger bg-opacity-10' : 'border-light'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setReturnRepairResult('not_repaired')}
+                    >
+                      <div className="card-body text-center py-3">
+                        <div className="fs-2 mb-1">❌</div>
+                        <div className={`fw-semibold small ${returnRepairResult === 'not_repaired' ? 'text-danger' : 'text-muted'}`}>No Reparada</div>
+                        <small className="text-muted">Sin cobro al cliente</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label fw-semibold">
+                    Notas del taller <small className="text-muted fw-normal">(opcional)</small>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={returnNotes}
+                    onChange={(e) => setReturnNotes(e.target.value)}
+                    placeholder="Ej: Se cambió el chip HDMI, equipo probado y funcionando..."
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="modal-footer border-0">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowReturnModal(false)}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${returnRepairResult === 'repaired' ? 'btn-success' : 'btn-danger'}`}
+                  onClick={handleConfirmReturn}
+                >
+                  {returnRepairResult === 'repaired' ? (
+                    <><CheckCircle size={16} className="me-2" />Confirmar Retorno — Reparada</>
+                  ) : (
+                    <><XCircle size={16} className="me-2" />Confirmar Retorno — No Reparada</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Tercerización */}
       {showOutsourceModal && (
         <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -1038,7 +1176,203 @@ const ServiceQueue: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+
+      {/* ===== MODAL: COMPLETAR REPARACIÓN ===== */}
+      {showCompleteModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-primary text-white border-0">
+                <h5 className="modal-title">
+                  <CheckCircle size={18} className="me-2" />
+                  Completar Reparación
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowCompleteModal(false)} />
+              </div>
+              <div className="modal-body p-4">
+                {/* Resultado de la reparación */}
+                <div className="mb-4">
+                  <label className="form-label fw-semibold mb-3">
+                    ¿Se reparó el dispositivo? <span className="text-danger">*</span>
+                  </label>
+                  <div className="d-flex gap-3">
+                    <div
+                      className={`card flex-fill border-2 cursor-pointer ${repairResult === 'repaired' ? 'border-success bg-success bg-opacity-10' : 'border-light'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setRepairResult('repaired')}
+                    >
+                      <div className="card-body text-center py-3">
+                        <div className="fs-2 mb-1">✅</div>
+                        <div className={`fw-semibold small ${repairResult === 'repaired' ? 'text-success' : 'text-muted'}`}>
+                          Reparada
+                        </div>
+                        <small className="text-muted">Se cobró el arreglo</small>
+                      </div>
+                    </div>
+                    <div
+                      className={`card flex-fill border-2 cursor-pointer ${repairResult === 'not_repaired' ? 'border-danger bg-danger bg-opacity-10' : 'border-light'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setRepairResult('not_repaired')}
+                    >
+                      <div className="card-body text-center py-3">
+                        <div className="fs-2 mb-1">❌</div>
+                        <div className={`fw-semibold small ${repairResult === 'not_repaired' ? 'text-danger' : 'text-muted'}`}>
+                          No Reparada
+                        </div>
+                        <small className="text-muted">Sin cobro al cliente</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notas de reparación */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    {repairResult === 'repaired' ? 'Trabajo realizado' : 'Motivo / Diagnóstico'}
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={completionNotes}
+                    onChange={(e) => setCompletionNotes(e.target.value)}
+                    placeholder={
+                      repairResult === 'repaired'
+                        ? 'Ej: Se cambió la fuente de poder, se limpió el lente...'
+                        : 'Ej: Daño en la placa principal, no tiene reparación económica...'
+                    }
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="modal-footer border-0">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowCompleteModal(false)}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${repairResult === 'repaired' ? 'btn-success' : 'btn-danger'}`}
+                  onClick={handleConfirmComplete}
+                >
+                  {repairResult === 'repaired' ? (
+                    <><CheckCircle size={16} className="me-2" />Marcar como Reparada</>
+                  ) : (
+                    <><XCircle size={16} className="me-2" />Marcar como No Reparada</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL: ENTREGA Y COBRO ===== */}
+      {showDeliverModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-success text-white border-0">
+                <h5 className="modal-title">
+                  <Package size={18} className="me-2" />
+                  Confirmar Entrega
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowDeliverModal(false)} />
+              </div>
+              <div className="modal-body p-4">
+
+                {/* Estado de la reparación */}
+                {deliverOrderData?.repair_result === 'not_repaired' ? (
+                  <div className="alert alert-danger d-flex align-items-center mb-4">
+                    <XCircle size={20} className="me-2 flex-shrink-0" />
+                    <div>
+                      <strong>Dispositivo no reparado</strong>
+                      <div className="small">No se registrará cobro al cliente.</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="alert alert-success d-flex align-items-center mb-4">
+                    <CheckCircle size={20} className="me-2 flex-shrink-0" />
+                    <div>
+                      <strong>Dispositivo reparado</strong>
+                      <div className="small">Registra el cobro al cliente.</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Formulario de cobro - solo si fue reparada */}
+                {deliverOrderData?.repair_result !== 'not_repaired' && (
+                  <div className="card border-success border-2 mb-3">
+                    <div className="card-header bg-success bg-opacity-10 border-0 py-2">
+                      <small className="fw-semibold text-success">
+                        <DollarSign size={14} className="me-1" />
+                        Cobro al Cliente
+                      </small>
+                    </div>
+                    <div className="card-body p-3">
+                      <div className="mb-3">
+                        <label className="form-label fw-semibold">Monto cobrado ($)</label>
+                        <div className="input-group">
+                          <span className="input-group-text">$</span>
+                          <input
+                            type="number"
+                            className="form-control"
+                            placeholder="0.00"
+                            min="0"
+                            step="1000"
+                            value={repairCost}
+                            onChange={(e) => setRepairCost(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        <small className="text-muted">Deja en 0 si no se cobra</small>
+                      </div>
+                      <div>
+                        <label className="form-label fw-semibold">Método de Pago</label>
+                        <div className="d-flex flex-wrap gap-2">
+                          {(['efectivo', 'transferencia', 'tarjeta', 'otro'] as const).map(m => (
+                            <button
+                              key={m}
+                              type="button"
+                              className={`btn btn-sm ${paymentMethod === m ? 'btn-success' : 'btn-outline-secondary'}`}
+                              onClick={() => setPaymentMethod(m)}
+                            >
+                              {m === 'efectivo' && '💵 '}
+                              {m === 'transferencia' && '📱 '}
+                              {m === 'tarjeta' && '💳 '}
+                              {m === 'otro' && '🔄 '}
+                              {m.charAt(0).toUpperCase() + m.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notas de entrega */}
+                <div>
+                  <label className="form-label fw-semibold">Notas de Entrega <small className="text-muted fw-normal">(opcional)</small></label>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                    placeholder="Ej: Cliente recogió con accesorios incluidos..."
+                  />
+                </div>
+              </div>
+              <div className="modal-footer border-0">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDeliverModal(false)}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn btn-success" onClick={handleConfirmDeliver}>
+                  <Package size={16} className="me-2" />
+                  Confirmar Entrega
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}    </div>
   )
 }
 

@@ -273,7 +273,7 @@ export const useUsers = () => {
 
   const createQuickUser = async (role: UserRole, name: string) => {
     const userData = {
-      email: `${role}@tallerservice.com`,
+      email: `${role}@gameboxservice.com`,
       password: '123456',
       full_name: name,
       role: role

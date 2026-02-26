@@ -41,15 +41,14 @@ DROP POLICY IF EXISTS "profiles_select_admin" ON profiles;
 DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
 DROP POLICY IF EXISTS "profiles_update_admin" ON profiles;
 DROP POLICY IF EXISTS "profiles_insert_admin" ON profiles;
+DROP POLICY IF EXISTS "profiles_select_staff" ON profiles;
+DROP POLICY IF EXISTS "profiles_select_authenticated" ON profiles;
 
 -- Políticas nuevas (SIN RECURSIÓN - usa current_user_role())
-CREATE POLICY "profiles_select_own"
+-- Todos los usuarios autenticados pueden ver perfiles (necesario para ver técnico asignado)
+CREATE POLICY "profiles_select_authenticated"
 ON profiles FOR SELECT
-USING (auth.uid() = id);
-
-CREATE POLICY "profiles_select_admin"
-ON profiles FOR SELECT
-USING (public.current_user_role() = 'admin');
+USING (auth.role() = 'authenticated');
 
 CREATE POLICY "profiles_update_own"
 ON profiles FOR UPDATE
@@ -117,25 +116,13 @@ DROP POLICY IF EXISTS "service_orders_update" ON service_orders;
 DROP POLICY IF EXISTS "service_orders_delete" ON service_orders;
 
 -- Políticas nuevas
--- Ver órdenes:
--- - Admin y recepcionista: VEN TODAS (incluido outsourced para control)
--- - Técnico: SOLO ve PENDIENTES y ASIGNADAS A ÉL (NO ve outsourced)
+-- Ver órdenes: Técnico asignado, quien recibió, admin, recepcionista
 CREATE POLICY "service_orders_select"
 ON service_orders FOR SELECT
 USING (
-  -- Admin y recepcionista ven TODAS (incluido outsourced)
+  auth.uid() = assigned_technician_id OR
+  auth.uid() = received_by_id OR
   public.current_user_role() IN ('admin', 'receptionist')
-  -- Técnico ve SOLO:
-  OR (
-    public.current_user_role() = 'technician' 
-    AND status != 'outsourced'  -- NO ve órdenes de taller externo
-    AND (
-      -- 1. Órdenes pendientes (para tomarlas)
-      status = 'pending'
-      -- 2. Órdenes asignadas a ÉL
-      OR assigned_technician_id = auth.uid()
-    )
-  )
 );
 
 -- Crear órdenes: Admin y Recepcionista
@@ -146,39 +133,11 @@ WITH CHECK (
 );
 
 -- Actualizar órdenes: Admin, Recepcionista, Técnico asignado, quien recibió
--- CRÍTICO: Técnicos pueden TOMAR órdenes pendientes y COMPLETAR sus órdenes
 CREATE POLICY "service_orders_update"
 ON service_orders FOR UPDATE
 USING (
-  -- Admin y recepcionista pueden actualizar cualquier orden
   public.current_user_role() IN ('admin', 'receptionist')
-  -- Técnico asignado puede actualizar su orden
   OR auth.uid() = assigned_technician_id
-  -- Quien recibió puede actualizar
-  OR auth.uid() = received_by_id
-  -- Técnicos pueden TOMAR órdenes pendientes
-  OR (
-    public.current_user_role() = 'technician' 
-    AND status = 'pending'
-  )
-)
-WITH CHECK (
-  -- Validaciones al actualizar:
-  -- Admin y recepcionista pueden hacer cualquier cambio
-  public.current_user_role() IN ('admin', 'receptionist')
-  -- Técnico solo puede:
-  OR (
-    public.current_user_role() = 'technician' 
-    AND (
-      -- Tomar orden pendiente (asignarse a sí mismo)
-      (status = 'in_progress' AND assigned_technician_id = auth.uid())
-      -- Completar su orden asignada
-      OR (status = 'completed' AND assigned_technician_id = auth.uid())
-      -- Mantener su orden asignada en progreso
-      OR (status = 'in_progress' AND assigned_technician_id = auth.uid())
-    )
-  )
-  -- Quien recibió puede actualizar
   OR auth.uid() = received_by_id
 );
 
@@ -363,14 +322,14 @@ ORDER BY cmd, policyname;
 -- ============================================
 -- RESUMEN DE POLÍTICAS
 -- ============================================
--- ✅ profiles: 5 políticas (SELECT own/admin, UPDATE own/admin, INSERT admin)
+-- ✅ profiles: 4 políticas (SELECT authenticated, UPDATE own/admin, INSERT admin)
 -- ✅ customers: 4 políticas (SELECT all, INSERT admin/recep, UPDATE/DELETE admin)
 -- ✅ service_orders: 4 políticas (SELECT filtered, INSERT admin/recep, UPDATE filtered, DELETE admin)
 -- ✅ company_settings: 4 políticas (SELECT public, INSERT/UPDATE/DELETE admin)
 -- ✅ external_workshops: 4 políticas (SELECT all, INSERT/UPDATE/DELETE admin)
 -- ✅ external_repairs: 4 políticas (SELECT all, INSERT/UPDATE admin/recep, DELETE admin)
 -- ============================================
--- TOTAL: 25 políticas configuradas
+-- TOTAL: 24 políticas configuradas
 -- ============================================
 
 SELECT '✅ Políticas de seguridad (RLS) configuradas exitosamente!' as status,

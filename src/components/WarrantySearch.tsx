@@ -13,6 +13,7 @@ const WarrantySearch: React.FC = () => {
   const [searched, setSearched] = useState(false)
   const [showComanda, setShowComanda] = useState(false)
   const [createdOrder, setCreatedOrder] = useState<any>(null)
+  const [creatingWarranty, setCreatingWarranty] = useState(false)
   
   const { serviceOrders, createServiceOrder, deliverServiceOrder } = useServiceOrders(true)
   const { modal, showSuccess, showError, showConfirm, closeModal } = useModal()
@@ -23,11 +24,15 @@ const WarrantySearch: React.FC = () => {
     setSearching(true)
     setSearched(true)
     
-    // Buscar órdenes por número de serie
-    const results = serviceOrders.filter(order => 
-      order.serial_number && 
-      order.serial_number.toLowerCase().includes(serialNumber.toLowerCase().trim())
-    )
+    // Buscar órdenes por número de serie (deduplicar por id para evitar duplicados en estado local)
+    const resultsMap = new Map<string, ServiceOrder>()
+    serviceOrders.forEach(order => {
+      if (order.serial_number &&
+          order.serial_number.toLowerCase().includes(serialNumber.toLowerCase().trim())) {
+        resultsMap.set(order.id, order)
+      }
+    })
+    const results = Array.from(resultsMap.values())
     
     // Ordenar por fecha más reciente primero
     const sortedResults = results.sort((a, b) => 
@@ -90,8 +95,9 @@ const WarrantySearch: React.FC = () => {
   }
 
   const handleWarrantyOrder = async (originalOrder: ServiceOrder) => {
-    if (!originalOrder.customer) return
+    if (!originalOrder.customer || creatingWarranty) return
     
+    setCreatingWarranty(true)
     try {
       // Crear nueva orden con los datos del dispositivo original
       const observations = originalOrder.completion_notes 
@@ -115,10 +121,14 @@ const WarrantySearch: React.FC = () => {
       if (created) {
         setCreatedOrder(created)
         setShowComanda(true)
+      } else {
+        showError('Error', 'No se pudo crear la orden de garantía. Inténtalo de nuevo.')
       }
     } catch (error) {
       console.error('Error creando orden de garantía:', error)
-      alert('Error al crear la orden de garantía')
+      showError('Error', 'Error inesperado al crear la orden de garantía')
+    } finally {
+      setCreatingWarranty(false)
     }
   }
 
@@ -398,10 +408,20 @@ const WarrantySearch: React.FC = () => {
                                 <button
                                   className="btn btn-warning w-100 d-flex align-items-center justify-content-center"
                                   onClick={() => handleWarrantyOrder(order)}
+                                  disabled={creatingWarranty}
                                   style={{minHeight: '48px'}}
                                 >
-                                  <RotateCcw size={18} className="me-2" />
-                                  Ingresar por Garantía - Crear Nueva Orden
+                                  {creatingWarranty ? (
+                                    <>
+                                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                      Creando orden...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RotateCcw size={18} className="me-2" />
+                                      Ingresar por Garantía - Crear Nueva Orden
+                                    </>
+                                  )}
                                 </button>
                                 <small className="text-muted d-block mt-2 text-center">
                                   Se creará una nueva orden automáticamente con los datos del dispositivo y se asignará al mismo técnico

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useExternalWorkshops, useExternalRepairs } from '../hooks'
+import { useServiceOrders } from '../hooks/useServiceOrders'
 import { 
   Building, 
   Plus, 
@@ -14,7 +15,8 @@ import {
   Package,
   Calendar,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { useModal } from '../hooks/useModal'
 import { CustomModal } from './ui/CustomModal'
@@ -23,7 +25,16 @@ const ExternalWorkshops: React.FC = () => {
   const { user } = useAuth()
   const { workshops, loading, error, createWorkshop, updateWorkshop, toggleWorkshopStatus, deleteWorkshop } = useExternalWorkshops()
   const { repairs, loading: repairsLoading, markAsReturned } = useExternalRepairs()
+  const { completeServiceOrder } = useServiceOrders()
   const { modal, showSuccess, showError, showConfirm, closeModal } = useModal()
+  
+  // Estado para el modal de retorno con resultado de reparación
+  const [showReturnModal, setShowReturnModal] = useState(false)
+  const [returnRepairId, setReturnRepairId] = useState('')
+  const [returnOrderId, setReturnOrderId] = useState('')
+  const [returnOrderNumber, setReturnOrderNumber] = useState('')
+  const [returnRepairResult, setReturnRepairResult] = useState<'repaired' | 'not_repaired'>('repaired')
+  const [returnNotes, setReturnNotes] = useState('')
   
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -181,24 +192,30 @@ const ExternalWorkshops: React.FC = () => {
     )
   }
 
-  const handleMarkAsReturned = (repairId: string, orderNumber: string) => {
-    showConfirm(
-      'Marcar como Retornado',
-      `¿Confirmas que la orden #${orderNumber} ya fue retornada por el taller externo?\n\nEl estado cambiará a "Completada" y estará lista para entrega al cliente.`,
-      async () => {
-        const { error } = await markAsReturned(repairId, new Date().toISOString())
-        if (error) {
-          showError('Error', error)
-        } else {
-          showSuccess('Éxito', 'Orden marcada como completada y lista para entrega')
-        }
-      },
-      undefined,
-      {
-        confirmText: 'Confirmar Retorno',
-        cancelText: 'Cancelar'
-      }
-    )
+  const handleMarkAsReturned = (repairId: string, serviceOrderId: string, orderNumber: string) => {
+    setReturnRepairId(repairId)
+    setReturnOrderId(serviceOrderId)
+    setReturnOrderNumber(orderNumber)
+    setReturnRepairResult('repaired')
+    setReturnNotes('')
+    setShowReturnModal(true)
+  }
+
+  const handleConfirmReturn = async () => {
+    try {
+      // 1. Marcar la reparación externa como retornada
+      const { error } = await markAsReturned(returnRepairId, new Date().toISOString(), returnNotes.trim() || undefined)
+      if (error) { showError('Error', error); setShowReturnModal(false); return }
+
+      // 2. Marcar la orden como completada con el resultado de la reparación
+      await completeServiceOrder(returnOrderId, returnNotes.trim() || '', returnRepairResult)
+
+      setShowReturnModal(false)
+      showSuccess('¡Listo!', `Orden #${returnOrderNumber} retornada y marcada como ${returnRepairResult === 'repaired' ? 'reparada' : 'no reparada'}. Lista para entrega al cliente.`)
+    } catch {
+      setShowReturnModal(false)
+      showError('Error', 'No se pudo registrar el retorno. Intenta de nuevo.')
+    }
   }
 
   if (loading) {
@@ -218,7 +235,7 @@ const ExternalWorkshops: React.FC = () => {
   const inactiveWorkshops = workshops.filter(w => !w.is_active)
 
   // Filtrar reparaciones activas (no devueltas)
-  const activeRepairs = repairs.filter(r => r.external_status !== 'returned')
+  const activeRepairs = repairs.filter(r => r.external_status !== 'returned' && r.external_status !== 'cancelled')
 
   return (
     <div className="container-fluid px-3 px-md-4 py-3">
@@ -324,7 +341,7 @@ const ExternalWorkshops: React.FC = () => {
                           {(user?.role === 'admin' || user?.role === 'receptionist') && (
                             <button
                               className="btn btn-sm btn-success"
-                              onClick={() => handleMarkAsReturned(repair.id, repair.order_number || 'N/A')}
+                              onClick={() => handleMarkAsReturned(repair.id, repair.service_order_id || '', repair.order_number || 'N/A')}
                               title="Marcar como retornado y completar orden"
                             >
                               <CheckCircle size={16} className="me-1" />
@@ -588,6 +605,85 @@ const ExternalWorkshops: React.FC = () => {
         onConfirm={modal.onConfirm}
         confirmText={modal.confirmText}
       />
+
+      {/* ===== MODAL: RETORNO DEL TALLER EXTERNO ===== */}
+      {showReturnModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header bg-primary text-white border-0">
+                <h5 className="modal-title">
+                  <Package size={18} className="me-2" />
+                  Retorno del Taller Externo — #{returnOrderNumber}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowReturnModal(false)} />
+              </div>
+              <div className="modal-body p-4">
+                {/* Resultado de la reparación */}
+                <div className="mb-4">
+                  <label className="form-label fw-semibold mb-3">
+                    ¿El taller logró reparar el dispositivo? <span className="text-danger">*</span>
+                  </label>
+                  <div className="d-flex gap-3">
+                    <div
+                      className={`card flex-fill border-2 ${returnRepairResult === 'repaired' ? 'border-success bg-success bg-opacity-10' : 'border-light'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setReturnRepairResult('repaired')}
+                    >
+                      <div className="card-body text-center py-3">
+                        <div className="fs-2 mb-1">✅</div>
+                        <div className={`fw-semibold small ${returnRepairResult === 'repaired' ? 'text-success' : 'text-muted'}`}>Reparada</div>
+                        <small className="text-muted">Lista para cobrar</small>
+                      </div>
+                    </div>
+                    <div
+                      className={`card flex-fill border-2 ${returnRepairResult === 'not_repaired' ? 'border-danger bg-danger bg-opacity-10' : 'border-light'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setReturnRepairResult('not_repaired')}
+                    >
+                      <div className="card-body text-center py-3">
+                        <div className="fs-2 mb-1">❌</div>
+                        <div className={`fw-semibold small ${returnRepairResult === 'not_repaired' ? 'text-danger' : 'text-muted'}`}>No Reparada</div>
+                        <small className="text-muted">Sin cobro al cliente</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Notas del trabajo realizado */}
+                <div>
+                  <label className="form-label fw-semibold">
+                    Notas del taller <small className="text-muted fw-normal">(opcional)</small>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={returnNotes}
+                    onChange={(e) => setReturnNotes(e.target.value)}
+                    placeholder="Ej: Se cambió el chip HDMI, equipo probado y funcionando..."
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="modal-footer border-0">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowReturnModal(false)}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${returnRepairResult === 'repaired' ? 'btn-success' : 'btn-danger'}`}
+                  onClick={handleConfirmReturn}
+                >
+                  {returnRepairResult === 'repaired' ? (
+                    <><CheckCircle size={16} className="me-2" />Confirmar Retorno — Reparada</>
+                  ) : (
+                    <><XCircle size={16} className="me-2" />Confirmar Retorno — No Reparada</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

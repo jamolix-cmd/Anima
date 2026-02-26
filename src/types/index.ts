@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'receptionist' | 'technician'
 
 export type ServiceStatus = 'pending' | 'in_progress' | 'completed' | 'delivered' | 'outsourced'
 
-export type ExternalRepairStatus = 'sent' | 'in_process' | 'ready' | 'returned'
+export type ExternalRepairStatus = 'sent' | 'in_process' | 'ready' | 'returned' | 'cancelled'
 
 export interface User {
   id: string
@@ -41,6 +41,10 @@ export interface ServiceOrder {
   received_by_id: string
   estimated_completion: string | null
   completion_notes: string | null
+  repair_result?: 'repaired' | 'not_repaired' | null
+  repair_cost?: number | null
+  payment_method?: 'efectivo' | 'transferencia' | 'tarjeta' | 'otro' | null
+  payment_collected_by_id?: string | null
   delivery_notes?: string | null
   delivered_at?: string | null
   created_at: string

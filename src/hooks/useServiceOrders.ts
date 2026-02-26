@@ -155,7 +155,6 @@ export const useServiceOrders = (autoRefresh: boolean = true) => {
 
       // Update local state
       setServiceOrders(prev => [completeOrder, ...prev])
-      setServiceOrders(prev => [completeOrder, ...prev])
       return completeOrder
     } catch (err) {
       console.error('❌ Error completo:', err)
@@ -238,17 +237,36 @@ export const useServiceOrders = (autoRefresh: boolean = true) => {
 
   const updateServiceOrder = async (id: string, updates: Partial<ServiceOrder>): Promise<boolean> => {
     try {
+      // Si se devuelve a pendiente, limpiar el técnico asignado
+      const returningToPending = updates.status === 'pending'
+      const finalUpdates = returningToPending
+        ? { ...updates, assigned_technician_id: null }
+        : updates
+
       const { error } = await supabase
         .from('service_orders')
-        .update(updates)
+        .update(finalUpdates)
         .eq('id', id)
 
       if (error) throw error
 
-      // Update local state
+      // Si se devuelve a pendiente, cancelar tercerización activa
+      if (returningToPending) {
+        await supabase
+          .from('external_repairs')
+          .update({ external_status: 'cancelled' })
+          .eq('service_order_id', id)
+          .neq('external_status', 'returned')
+
+        // Refrescar desde servidor para obtener datos actualizados (external_repair incluido)
+        await fetchServiceOrders()
+        return true
+      }
+
+      // Para otros cambios, actualizar estado local directamente
       setServiceOrders(prev => 
         prev.map(order => 
-          order.id === id ? { ...order, ...updates } : order
+          order.id === id ? { ...order, ...finalUpdates } : order
         )
       )
       return true
@@ -280,7 +298,11 @@ export const useServiceOrders = (autoRefresh: boolean = true) => {
     }
   }
 
-  const completeServiceOrder = async (orderId: string, completionNotes: string): Promise<boolean> => {
+  const completeServiceOrder = async (
+    orderId: string,
+    completionNotes: string,
+    repairResult: 'repaired' | 'not_repaired'
+  ): Promise<boolean> => {
     try {
       if (!user) throw new Error('Usuario no autenticado')
       
@@ -289,6 +311,7 @@ export const useServiceOrders = (autoRefresh: boolean = true) => {
         .update({
           status: 'completed',
           completion_notes: completionNotes,
+          repair_result: repairResult,
           completed_by_id: user.id,
           updated_at: new Date().toISOString(),
         })
@@ -310,7 +333,12 @@ export const useServiceOrders = (autoRefresh: boolean = true) => {
     }
   }
 
-  const deliverServiceOrder = async (orderId: string, deliveryNotes?: string): Promise<boolean> => {
+  const deliverServiceOrder = async (
+    orderId: string,
+    deliveryNotes?: string,
+    repairCost?: number | null,
+    paymentMethod?: 'efectivo' | 'transferencia' | 'tarjeta' | 'otro' | null
+  ): Promise<boolean> => {
     try {
       const now = new Date().toISOString()
       
@@ -320,6 +348,9 @@ export const useServiceOrders = (autoRefresh: boolean = true) => {
           status: 'delivered',
           delivered_at: now,
           delivery_notes: deliveryNotes || null,
+          repair_cost: repairCost ?? null,
+          payment_method: paymentMethod ?? null,
+          payment_collected_by_id: repairCost ? user?.id : null,
           updated_at: now,
         })
         .eq('id', orderId)
